@@ -8,3 +8,5 @@ all_data.price_range.map({0:'None', 1:'1$', 2:'2$', 3:'3$', 4:'4$'})
 
 
 all_data[all_data['has_profile_photo'] < 1].shape[0]
+
+has_columns = [a for a in all_data.columns.get_values() if 'has' in a]

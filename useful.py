@@ -8,7 +8,7 @@ df.groupby(key_columns).size() #count
 bla.sort_values('likes', ascending=False)
 
 #filter
-all_data[(all_data['likes'] > 5000) & (all_data['likes'] < 1500000)]
+
 
 #rename
 tips.rename(columns={'likes':'cnt'}, inplace=True)

@@ -12,7 +12,7 @@ bla.sort_values('likes', ascending=False)
 
 #rename
 tips.rename(columns={'likes':'cnt'}, inplace=True)
-all_data.price_range.map({0:'None', 1:'1$', 2:'2$', 3:'3$', 4:'4$'})
+all_data['price_range'].map({0:'None', 1:'1$', 2:'2$', 3:'3$', 4:'4$'}, inplace=True)
 
 
 all_data[all_data['has_profile_photo'] < 1].shape[0]

@@ -19,4 +19,7 @@ all_data[all_data['has_profile_photo'] < 1].shape[0]
 
 has_columns = [a for a in all_data.columns.get_values() if 'has' in a]
 
+all_data['log_likes2'] = all_data['likes'].apply(lambda x: np.log(x) if x > 0 else 0)
+
+
 all_data.columns.get_values()

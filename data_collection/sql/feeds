@@ -1,0 +1,59 @@
+with posts_comments as(
+select page_id, avg(comment_total_likes / comments_count) as avg_likes_per_comment
+from(
+    select page_id, id, avg(size(comments.data)) as comments_count,
+           (case when sum(comment.like_count) is not null then sum(comment.like_count) else sum(comment.likeCount) end) as comment_total_likes
+    from feeds_raw
+    lateral view explode(comments.data) as comment
+    group by page_id, id)
+group by page_id
+),
+posts as(
+select  page_id,
+        count(distinct id)                                                                                                              as feed_post_count,
+        count(distinct `from`.id)                                                                                                       as feed_distinct_post_writers,
+        from_unixtime(min(createdTime/1000))                                                                                            as feed_first_post_time,
+        from_unixtime(max(createdTime/1000))                                                                                            as feed_last_post_time,
+        count(distinct from_unixtime(createdTime/1000, 'yyyy-MM'))                                                                      as feed_number_of_different_months_for_post,
+        datediff(from_unixtime(max(createdTime/1000)), from_unixtime(min(createdTime/1000)))                                            as feed_number_of_days_between_first_and_last_posts,
+        sum(case when updatedTime is not null then 1 else 0 end)                                                                        as feed_count_post_updated,
+        sum(case when updatedTime is not null then 1 else 0 end) / count(id)                                                            as feed_post_updated_prc,
+        avg(comments.summary.total_count)                                                                                               as feed_avg_comments,
+        max(comments.summary.total_count)                                                                                               as feed_max_comments,
+        min(comments.summary.total_count)                                                                                               as feed_min_comments,
+        std(comments.summary.total_count)                                                                                               as feed_std_comments,
+        avg(likes.summary.total_count)                                                                                                  as feed_avg_likes,
+        max(likes.summary.total_count)                                                                                                  as feed_max_likes,
+        min(likes.summary.total_count)                                                                                                  as feed_min_likes,
+        std(likes.summary.total_count)                                                                                                  as feed_std_likes,
+        avg(shares.count)                                                                                                               as feed_avg_shares,
+        max(shares.count)                                                                                                               as feed_max_shares,
+        min(shares.count)                                                                                                               as feed_min_shares,
+        std(shares.count)                                                                                                               as feed_std_shares,
+        sum(case when is_hidden = true or isHidden = true then 1 else 0 end)                                                            as feed_is_hidden_count,
+        sum(case when is_published = true or isPublished = true then 1 else 0 end)                                                      as feed_is_published_count,
+        avg(size(messageTags))                                                                                                          as feed_avg_people_tagged_per_post,
+        avg(case when size(messageTags) > 0 then size(messageTags) else null end)                                                       as feed_avg_people_tagged_per_post_with_more_than_zero,
+        max(size(messageTags))                                                                                                          as feed_post_max_people_tagged,
+        sum(size(messageTags))                                                                                                          as feed_sum_people_tagged_count,
+        avg(size(withTags))                                                                                                             as feed_avg_with_tagged_per_post,
+        avg(case when size(withTags) > 0 then size(withTags) else null end)                                                             as feed_avg_with_tagged_per_post_with_more_than_zero,
+        max(size(withTags))                                                                                                             as feed_post_max_with_tagged,
+        sum(size(withTags))                                                                                                             as feed_sum_with_tagged_count,
+        sum(case when place is not null then 1 else 0 end)                                                                              as feed_count_has_place,
+        count(distinct case when (statusType = 'shared_story') or (status_type = 'shared_story') then id else null end)                 as feed_number_of_shared_story_category,
+        count(distinct case when (statusType = 'added_photos') or (status_type = 'added_photos') then id else null end)                 as feed_number_of_added_photos_category,
+        count(distinct case when (statusType is not null and statusType <> 'shared_story' and statusType <> 'added_photos')
+                or (status_type is not null and status_type <> 'shared_story' and status_type <> 'added_photos') then id else null end) as feed_number_of_other_categories,
+        count(distinct case when statusType is null and status_type is null then id else null end)                                      as feed_number_of_null_category,
+        avg(sharesCount)                                                                                                                as feed_avg_shares_cnt,
+        max(sharesCount)                                                                                                                as feed_max_shares_cnt,
+        min(sharesCount)                                                                                                                as feed_min_shares_cnt,
+        std(sharesCount)                                                                                                                as feed_std_shares_cnt
+from feeds_raw f
+group by page_id)
+select p.*,
+      c.avg_likes_per_comment as feed_avg_likes_per_comment
+from posts p
+join posts_comments c
+on p.page_id = c.page_id

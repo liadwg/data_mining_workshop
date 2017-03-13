@@ -1,0 +1,66 @@
+with photo_comments as(
+    select page_id,
+           id,
+           sum(comment.likeCount) as comments_total_likes
+    from photos_raw
+    lateral view explode(comments.data) as comment
+    group by page_id, id
+),
+photos as(
+    select  f.page_id,
+            f.id, --as photo_id,
+            createdTime,
+            `from`.id as from_id,
+            (case when name is not null then 1 else 0 end)  as has_name,
+            (case when place is not null then 1 else 0 end) as has_place,
+            -- (case when event is not null then 1 else 0 end) as has_event,
+            -- event,
+            album,
+            -- size(likes) as like_count,
+            likes.summary.totalCount as like_count,
+            -- size(comments) as comments_count,
+            comments.summary.totalCount as comments_count,
+            size(tags) as tags_count,
+            c.comments_total_likes
+            -- c.distinct_comments_writers
+    from photos_raw f
+    join photo_comments c
+    on f.page_id = c.page_id and
+       f.id = c.id
+)
+
+select    page_id,
+          count(distinct id)                                                                                                as total_photos,
+          count(distinct from_id)                                                                                           as photo_distinct_uploaders,
+          from_unixtime(min(createdTime/1000))                                                                              as photo_first_photo_time,
+          from_unixtime(max(createdTime/1000))                                                                              as photo_last_photo_time,
+          count(distinct from_unixtime(createdTime/1000, 'yyyy-MM'))                                                        as photo_number_of_different_months_for_photos,
+          datediff(from_unixtime(max(createdTime/1000)), from_unixtime(min(createdTime/1000)))                              as photo_number_of_days_between_first_and_last_photos,
+          sum(has_name)                                                                                                     as photo_count_has_name,
+          sum(has_place)                                                                                                    as photo_count_has_place,
+        --   sum(has_event)                                                                                                    as photo_count_has_event,
+        --   count(distinct event)                                                                                             as photo_count_events_in_photos,
+          max(like_count)                                                                                                   as photo_max_like,
+          min(like_count)                                                                                                   as photo_min_like,
+          avg(like_count)                                                                                                   as photo_avg_likes_per_photo,
+          sum(like_count)                                                                                                   as photo_sum_like_count,
+          avg(tags_count)                                                                                                   as photo_avg_people_tagged_per_photo,
+          avg(case when tags_count > 0 then tags_count else null end)                                                       as photo_avg_people_tagged_per_photo_with_more_than_zero,
+          max(tags_count)                                                                                                   as photo_max_people_tagged,
+          sum(tags_count)                                                                                                   as photo_sum_people_tagged_count,
+          avg(comments_count)                                                                                               as photo_avg_comments_per_photo,
+          sum(comments_count)                                                                                               as photo_sum_comments_count,
+          avg(comments_total_likes)                                                                                         as photo_avg_likes_per_comments,
+          --avg(distinct_comments_writers)                                                                                    as photo_avg_distinct_comments_writers,
+          count(distinct album.id)                                                                                                           as photo_number_of_albums,
+          count(distinct case when album.`type` = 'cover'   then album.id else null end)                                                     as photo_number_of_cover_albums,
+          count(distinct case when album.`type` = 'profile' then album.id else null end)                                                     as photo_number_of_profile_albums,
+          count(distinct case when album.`type` is not null and album.`type` <> 'cover'
+                            and album.`type` <> 'profile' then album.id else null end)                                                       as photo_number_of_other_albums,
+          count(distinct case when album.`type` is null     then album.id else null end)                                                     as photo_number_of_null_albums,
+          count(distinct case when album.`type` = 'cover'   then id else null end)                                                           as photo_number_of_photos_in_cover_albums,
+          count(distinct case when album.`type` = 'profile' then id else null end)                                                           as photo_number_of_photos_in_profile_albums,
+          count(distinct case when album.`type` is not null and album.`type` <> 'cover' and album.`type` <> 'profile' then id else null end) as photo_number_of_photos_in_other_albums,
+          count(distinct case when album.`type` is null     then id else null end)                                                           as photo_number_of_photos_in_null_albums
+from photos
+group by page_id
